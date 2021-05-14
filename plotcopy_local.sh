@@ -10,12 +10,13 @@ user="dbkissd2"
 server="dbkisd2"
 
 #global defaults
+USE_LOCAL="false"
 LOG_DIR="./logs"
 PLOT_FINAL_SIZE=$((109000000000/1024))
 # dir paths need a trailing /, support multiple PLOT_FOLDERS and REMOTE_PLOT_FOLDERS
-PLOT_FOLDERS=("/mnt/d/plots/")
+PLOT_FOLDERS=("/mnt/ssd_1t_1/")
 # REMOTE_PLOT_FOLDERS=("/home/")
-REMOTE_PLOT_FOLDERS=("/mnt/i/" "/mnt/j/" "/mnt/k/" "/mnt/l/" "/mnt/m/" "/mnt/n/" "/mnt/o/")
+REMOTE_PLOT_FOLDERS=("/mnt/sdg/" "/mnt/sdh/" "/mnt/sdj/" "/mnt/sdk/" "/mnt/sdl" "/mnt/sde")
 MAX_PARALLEL=7
 deleteSource="true"
 doHash="false"
@@ -27,11 +28,21 @@ checkServerForFile()
 {
 	local remoteFile=$1
 	local serverDirectory=$2
-	if stat "${serverDirectory}""${remoteFile}" \> /dev/null 2\>\&1
+	if [[ "${USE_LOCAL}" == "true" ]]
 	then
-		return 0
+		if stat "${serverDirectory}""${remoteFile}" \> /dev/null 2\>\&1
+		then
+			return 0
+		else
+			return 1
+		fi
 	else
-		return 1
+		if ssh "${user}"@"${server}" stat "${serverDirectory}""${remoteFile}" \> /dev/null 2\>\&1
+		then
+			return 0
+		else
+			return 1
+		fi
 	fi
 }
 
@@ -42,6 +53,10 @@ copyFileToServer()
 	local serverDirectory=$3
 	local logFile=$4
 	local cmdSCP="scp ${localFolder}${localFile} ${serverDirectory}"
+	if [[ "${USE_LOCAL}" == "false" ]]
+	then
+		cmdSCP="scp ${localFolder}${localFile} ${user}@${server}:${serverDirectory}"
+	fi
 	if script -q -c "${cmdSCP}" 1>> "${logFile}"
 	then
 		return 0
@@ -191,7 +206,12 @@ calculateAvailablePlotCount()
 getRemoteDriveFreeSpace()
 {
 	local remoteFolder=$1
-	local sshResult=`df -P --block-size=1K "${remoteFolder}"`
+	if [[ "${USE_LOCAL}" == "true" ]]
+	then
+		local sshResult=`df -P --block-size=1K "${remoteFolder}"`
+	else
+		local sshResult=`ssh "${user}"@"${server}" df -P --block-size=1K "${remoteFolder}"`
+	fi
 	echo `echo "${sshResult}" | awk 'NR==2 {print $4}'`
 }
 
