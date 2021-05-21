@@ -56,6 +56,8 @@ copyFileToServer()
 	if [[ "${USE_LOCAL}" == "false" ]]
 	then
 		cmdSCP="scp ${localFolder}${localFile} ${user}@${server}:${serverDirectory}"
+	else
+		cmdSCP="scp ${localFolder}${localFile} ${serverDirectory}"
 	fi
 	if script -q -c "${cmdSCP}" 1>> "${logFile}"
 	then
